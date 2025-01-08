@@ -21,6 +21,7 @@ jobs:
         run: ./setup-build.sh
       
       - name: Build
+        id: build
         run: ./build.sh
         
       - name: Upload package
@@ -41,14 +42,9 @@ jobs:
           name: downloads-Ubuntu
           path: downloads
 
-      - name: Generate artifact hashes
-        shell: bash
-        id: hash
-        run: |
-          cd upload && echo "artifact_hashes=$(sha256sum * | base64 -w0)" >> "$GITHUB_OUTPUT"
-
     outputs:
-      artifact_hashes: ${{ steps.hash.outputs.artifact_hashes }}
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+      artifact_sha256: ${{ steps.build.outputs.artifact_sha256 }}
 
   # Sign in a separate job to limit ID token exposure
   sign_ubuntu:
@@ -56,17 +52,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      
-    steps:
-      - name: Install cosign
-        #if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3.7.0
+      contents: read
+      attestations: write
 
-      - name: Sign artifact hashes
-        #if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          echo ${{ needs.build_ubuntu.outputs.artifact_hashes }} | base64 -d > ARTIFACT_SHA256SUMS
-          cosign sign-blob -y ARTIFACT_SHA256SUMS
+    steps:
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ needs.build_ubuntu.outputs.artifact_name }}
+          subject-digest: sha256:${{ needs.build_ubuntu.outputs.artifact_sha256 }}
 
   build_macos:
     runs-on: macos-13
@@ -82,6 +76,7 @@ jobs:
         run: ./setup-build.sh
       
       - name: Build
+        id: build
         run: ./build.sh
         
       - name: Upload Package
@@ -102,32 +97,25 @@ jobs:
           name: downloads-MacOS
           path: downloads
         
-      - name: Generate artifact hashes
-        shell: bash
-        id: hash
-        run: |
-          cd upload && echo "artifact_hashes=$(shasum -a 256 * | base64)" >> "$GITHUB_OUTPUT"
-
     outputs:
-      artifact_hashes: ${{ steps.hash.outputs.artifact_hashes }}
-
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+      artifact_sha256: ${{ steps.build.outputs.artifact_sha256 }}
+      
   # Sign in a separate job to limit ID token exposure
   sign_macos:
     needs: [build_macos]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: read
+      attestations: write
       
     steps:
-      - name: Install cosign
-        #if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3.7.0
-
-      - name: Sign artifact hashes
-        #if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          echo ${{ needs.build_macos.outputs.artifact_hashes }} | base64 -d > ARTIFACT_SHA256SUMS
-          cosign sign-blob -y ARTIFACT_SHA256SUMS
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ needs.build_macos.outputs.artifact_name }}
+          subject-digest: sha256:${{ needs.build_macos.outputs.artifact_sha256 }}
 
   build_macos_aarch64:
     runs-on: macos-14
@@ -143,6 +131,7 @@ jobs:
         run: ./setup-build.sh
       
       - name: Build
+        id: build
         run: ./build.sh
         
       - name: Upload Package
@@ -163,29 +152,22 @@ jobs:
           name: downloads-MacOS-AArch64
           path: downloads
         
-      - name: Generate artifact hashes
-        shell: bash
-        id: hash
-        run: |
-          cd upload && echo "artifact_hashes=$(shasum -a 256 * | base64)" >> "$GITHUB_OUTPUT"
-
     outputs:
-      artifact_hashes: ${{ steps.hash.outputs.artifact_hashes }}
-
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+      artifact_sha256: ${{ steps.build.outputs.artifact_sha256 }}
+      
   # Sign in a separate job to limit ID token exposure
   sign_macos_aarch64:
     needs: [build_macos_aarch64]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: read
+      attestations: write
       
     steps:
-      - name: Install cosign
-        #if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3.7.0
-
-      - name: Sign artifact hashes
-        #if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          echo ${{ needs.build_macos_aarch64.outputs.artifact_hashes }} | base64 -d > ARTIFACT_SHA256SUMS
-          cosign sign-blob -y ARTIFACT_SHA256SUMS
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ needs.build_macos_aarch64.outputs.artifact_name }}
+          subject-digest: sha256:${{ needs.build_macos_aarch64.outputs.artifact_sha256 }}
