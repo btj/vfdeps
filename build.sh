@@ -55,5 +55,5 @@ shasum -a 224 $VFDEPS_FILEPATH
 
 if [ -n "$GITHUB_OUTPUT" ]; then
   echo "artifact_name=$VFDEPS_FILENAME" >> "$GITHUB_OUTPUT"
-  echo "artifact_sha256=`shasum -a 256 $VFDEPS_FILEPATH`" >> "$GITHUB_OUTPUT"
+  echo "artifact_sha256=`shasum -a 256 $VFDEPS_FILEPATH | awk '{print $1}'`" >> "$GITHUB_OUTPUT"
 fi
